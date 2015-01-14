@@ -79,12 +79,12 @@ class SitemapGenerator
         foreach ($images as $tag) {
             if (!preg_match('/;base64,/i', $tag->getAttribute('src'))) {
                 if (strstr($tag->getAttribute('src'), $this->_url)) {
-                    $img =  $tag->getAttribute('src');
+                    $img = $tag->getAttribute('src');
                     if (!in_array($img, $array)) {
                         $array[] = $img;
                     }
                 } else if (substr($tag->getAttribute('src'), 0, 1) == '/') {
-                    $img =  $this->_url . $tag->getAttribute('href');
+                    $img = $this->_url . $tag->getAttribute('href');
                     if (!in_array($img, $array)) {
                         $array[] = $img;
                     }
@@ -121,7 +121,7 @@ class SitemapGenerator
 
     public function link($link)
     {
-        if (!empty($link) && !isset($this->_links[$link]) && $this->_max_links >= sizeof($this->_links)+1) {
+        if (!empty($link) && !isset($this->_links[$link]) && $this->_max_links >= sizeof($this->_links) + 1) {
             $h = get_headers($link, 1);
             $dt = NULL;
 
@@ -168,6 +168,15 @@ class SitemapGenerator
         $xml .= '</urlset>';
 
         file_put_contents('sitemap.xml', $xml);
+    }
+
+    public function compress()
+    {
+        $file = "sitemap.xml";
+        $gzfile = "sitemap.xml.gz";
+        $fp = gzopen ($gzfile, 'w9');
+        gzwrite ($fp, file_get_contents($file));
+        gzclose($fp);
     }
 
     public function navigate()
