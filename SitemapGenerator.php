@@ -2,6 +2,7 @@
 
 error_reporting(E_ALL);
 ini_set("display_errors", 1);
+date_default_timezone_set('Europe/Paris');
 
 /**
  * Class SitemapGenerator
@@ -15,8 +16,10 @@ class SitemapGenerator
     private $_links;
     private $_html;
     private $_actual;
+    private $_lastmod;
+    private $_changefreq;
 
-    function __construct($url, $max_links = 50000)
+    function __construct($url, $max_links = 50000, $lastmod = null, $changefreq = null)
     {
         if (!(substr($url, -1) == '/')) {
             $this->_url = $url . '/';
@@ -24,7 +27,10 @@ class SitemapGenerator
             $this->_url = $url;
         }
 
+        $this->_lastmod = $lastmod;
+        $this->_changefreq = $changefreq;
         $this->_max_links = $max_links;
+
         $this->link($this->_url);
     }
 
@@ -127,6 +133,8 @@ class SitemapGenerator
 
             if (!($h || strstr($h[0], '200') === FALSE)) {
                 $this->_links[$link]['date'] = $h['Last-Modified'];
+            } else if ($this->_lastmod !== null) {
+                $this->_links[$link]['date']  = $this->_lastmod;
             } else {
                 $this->_links[$link]['date'] = '';
             }
@@ -149,6 +157,9 @@ class SitemapGenerator
                 $xml .= '        <lastmod>' . $v['date'] . '</lastmod>' . PHP_EOL;
             }
 
+            if ($this->_changefreq != null) {
+                $xml .= '        <changefreq>' . $this->_changefreq . '</changefreq>' . PHP_EOL;
+            }
 
             if ($link === $this->_url) {
                 $xml .= '       <priority>1</priority>' . PHP_EOL;
@@ -174,8 +185,8 @@ class SitemapGenerator
     {
         $file = "sitemap.xml";
         $gzfile = "sitemap.xml.gz";
-        $fp = gzopen ($gzfile, 'w9');
-        gzwrite ($fp, file_get_contents($file));
+        $fp = gzopen($gzfile, 'w9');
+        gzwrite($fp, file_get_contents($file));
         gzclose($fp);
     }
 
