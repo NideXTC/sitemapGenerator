@@ -18,9 +18,14 @@ class SitemapGenerator
 
     function __construct($url, $max_links = 50000)
     {
-        $this->_url = $url;
+        if (!(substr($url, -1) == '/')) {
+            $this->_url = $url . '/';
+        } else {
+            $this->_url = $url;
+        }
+
         $this->_max_links = $max_links;
-        $this->link($url);
+        $this->link($this->_url);
     }
 
     public function getLinks()
@@ -65,20 +70,68 @@ class SitemapGenerator
 
     public function getImages()
     {
+        $dom = new domDocument;
+        $array = [];
+
+        @$dom->loadHTML($this->_html);
+        $images = $dom->getElementsByTagName('img');
+
+        foreach ($images as $tag) {
+            if (!preg_match('/;base64,/i', $tag->getAttribute('src'))) {
+                if (strstr($tag->getAttribute('src'), $this->_url)) {
+                    $img =  $tag->getAttribute('src');
+                    if (!in_array($img, $array)) {
+                        $array[] = $img;
+                    }
+                } else if (substr($tag->getAttribute('src'), 0, 1) == '/') {
+                    $img =  $this->_url . $tag->getAttribute('href');
+                    if (!in_array($img, $array)) {
+                        $array[] = $img;
+                    }
+
+                } else {
+                    if (substr($tag->getAttribute('src'), 0, 2) == './') {
+                        $img = $this->_url . substr($tag->getAttribute('src'), 2);
+                        if (!in_array($img, $array)) {
+                            $array[] = $img;
+                        }
+                    } else if (substr($tag->getAttribute('src'), 0, 3) == '../') {
+                        $pad = substr_count($tag->getAttribute('src'), '../');
+                        $baseUrlTemp = $this->_url;
+                        for ($i = 1; $i <= $pad + 1; $i++) {
+                            $baseUrlTemp = substr($baseUrlTemp, 0, strrpos($baseUrlTemp, '/'));
+                        }
+                        $img = $baseUrlTemp . '/' . str_replace('../', '', $tag->getAttribute('src'));
+                        if (!in_array($img, $array)) {
+                            $array[] = $img;
+                        }
+                    } else {
+                        $img = $this->_url . $tag->getAttribute('src');
+                        if (!in_array($img, $array)) {
+                            $array[] = $img;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $array;
 
     }
 
     public function link($link)
     {
-        if (!empty($link) && !isset($this->_links[$link]) && $this->_max_links >= sizeof($this->_links)) {
+        if (!empty($link) && !isset($this->_links[$link]) && $this->_max_links >= sizeof($this->_links)+1) {
             $h = get_headers($link, 1);
             $dt = NULL;
 
             if (!($h || strstr($h[0], '200') === FALSE)) {
-                $this->_links[$link] = $h['Last-Modified'];
+                $this->_links[$link]['date'] = $h['Last-Modified'];
             } else {
-                $this->_links[$link] = '';
+                $this->_links[$link]['date'] = '';
             }
+
+            $this->_links[$link]['images'] = $this->getImages();
             $this->_actual = $link;
             $this->navigate();
         }
@@ -89,17 +142,24 @@ class SitemapGenerator
         $xml = '<?xml version="1.0"?>' . PHP_EOL .
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . PHP_EOL;
 
-        foreach ($this->_links as $link => $date) {
+        foreach ($this->_links as $link => $v) {
             $xml .= '    <url>' . PHP_EOL;
             $xml .= '        <loc>' . $link . '</loc>' . PHP_EOL;
-            if($date != null){
-                $xml .= '        <lastmod>' . $date . '</lastmod>' . PHP_EOL;
+            if ($v['date'] != null) {
+                $xml .= '        <lastmod>' . $v['date'] . '</lastmod>' . PHP_EOL;
             }
 
-            if($link === $this->_url ){
+
+            if ($link === $this->_url) {
                 $xml .= '       <priority>1</priority>' . PHP_EOL;
             } else {
                 $xml .= '        <priority>0.5</priority>' . PHP_EOL;
+            }
+
+            foreach ($v['images'] as $image) {
+                $xml .= '        <image:image>' . PHP_EOL;
+                $xml .= '            <image:loc>' . $image . '</image:loc>' . PHP_EOL;
+                $xml .= '        </image:image>' . PHP_EOL;
             }
 
             $xml .= '    </url>' . PHP_EOL;
@@ -107,7 +167,7 @@ class SitemapGenerator
 
         $xml .= '</urlset>';
 
-        file_put_contents('sitemap.xml',$xml);
+        file_put_contents('sitemap.xml', $xml);
     }
 
     public function navigate()
@@ -118,6 +178,7 @@ class SitemapGenerator
         curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) AppleWebKit/525.13 (KHTML, like Gecko) Chrome/0.A.B.C Safari/525.13");
         curl_setopt($ch, CURLOPT_HEADER, 1);
         curl_setopt($ch, CURLOPT_AUTOREFERER, 1);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
         $this->_html = curl_exec($ch);
         $info = curl_getinfo($ch);
         curl_close($ch);
