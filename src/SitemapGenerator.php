@@ -1,14 +1,14 @@
 <?php
 
-error_reporting(E_ALL);
-ini_set("display_errors", 1);
-date_default_timezone_set('Europe/Paris');
 
 /**
  * Class SitemapGenerator
  * @author Alexis Ducerf - http://www.alexis-ducerf.fr <alexis.ducerf@gmail.com>
  * @date Feb 13th, 2015
  */
+
+namespace SeoTools;
+
 class SitemapGenerator
 {
     private $_url;
@@ -18,6 +18,7 @@ class SitemapGenerator
     private $_actual;
     private $_lastmod;
     private $_changefreq;
+    private $_piority = [];
 
     function __construct($url, $max_links = 50000, $lastmod = null, $changefreq = null)
     {
@@ -36,7 +37,7 @@ class SitemapGenerator
 
     public function getLinks()
     {
-        $dom = new domDocument;
+        $dom = new \domDocument;
         $array = [];
 
         @$dom->loadHTML($this->_html);
@@ -76,7 +77,7 @@ class SitemapGenerator
 
     public function getImages()
     {
-        $dom = new domDocument;
+        $dom = new \domDocument;
         $array = [];
 
         @$dom->loadHTML($this->_html);
@@ -134,7 +135,7 @@ class SitemapGenerator
             if (!($h || strstr($h[0], '200') === FALSE)) {
                 $this->_links[$link]['date'] = $h['Last-Modified'];
             } else if ($this->_lastmod !== null) {
-                $this->_links[$link]['date']  = $this->_lastmod;
+                $this->_links[$link]['date'] = $this->_lastmod;
             } else {
                 $this->_links[$link]['date'] = '';
             }
@@ -147,8 +148,9 @@ class SitemapGenerator
 
     public function generate()
     {
-        $xml = '<?xml version="1.0"?>' . PHP_EOL .
-            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . PHP_EOL;
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL .
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" 
+  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" >' . PHP_EOL;
 
         foreach ($this->_links as $link => $v) {
             $xml .= '    <url>' . PHP_EOL;
