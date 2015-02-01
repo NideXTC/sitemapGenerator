@@ -18,10 +18,10 @@ class SitemapGenerator
     private $_actual;
     private $_lastmod;
     private $_changefreq;
-    private $_piority = [];
 
     function __construct($url, $max_links = 50000, $lastmod = null, $changefreq = null)
     {
+
         if (!(substr($url, -1) == '/')) {
             $this->_url = $url . '/';
         } else {
@@ -31,6 +31,11 @@ class SitemapGenerator
         $this->_lastmod = $lastmod;
         $this->_changefreq = $changefreq;
         $this->_max_links = $max_links;
+
+
+        if (php_sapi_name() == "cli") {
+            echo '------- CRAWLING -------' . PHP_EOL;
+        }
 
         $this->link($this->_url);
     }
@@ -129,6 +134,11 @@ class SitemapGenerator
     public function link($link)
     {
         if (!empty($link) && !isset($this->_links[$link]) && $this->_max_links >= sizeof($this->_links) + 1) {
+
+            if (php_sapi_name() == "cli") {
+                echo $link . PHP_EOL;
+            }
+
             $h = get_headers($link, 1);
             $dt = NULL;
 
@@ -148,6 +158,11 @@ class SitemapGenerator
 
     public function generate()
     {
+
+        if (php_sapi_name() == "cli") {
+            echo '------- GENERATION -------' . PHP_EOL;
+        }
+
         $xml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL .
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" 
   xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" >' . PHP_EOL;
@@ -165,8 +180,15 @@ class SitemapGenerator
 
             if ($link === $this->_url) {
                 $xml .= '       <priority>1</priority>' . PHP_EOL;
+                if (php_sapi_name() == "cli") {
+                    echo $link . ' / priority : 1' . PHP_EOL;
+                }
             } else {
-                $xml .= '        <priority>0.5</priority>' . PHP_EOL;
+                $nb = ((substr_count($link, '/') - 2) === 0) ? 1 : substr_count($link, '/') - 2;
+                $xml .= '        <priority>' . (1 - ($nb * 0.15)) . '</priority>' . PHP_EOL;
+                if (php_sapi_name() == "cli") {
+                    echo $link . ' / priority : ' . (1 - ($nb * 0.15)) . PHP_EOL;
+                }
             }
 
             foreach ($v['images'] as $image) {
@@ -185,11 +207,20 @@ class SitemapGenerator
 
     public function compress()
     {
+        if (php_sapi_name() == "cli") {
+            echo '------- COMPRESSION -------' . PHP_EOL;
+        }
+
         $file = "sitemap.xml";
         $gzfile = "sitemap.xml.gz";
         $fp = gzopen($gzfile, 'w9');
         gzwrite($fp, file_get_contents($file));
         gzclose($fp);
+
+        if (php_sapi_name() == "cli") {
+            echo 'DONE' . PHP_EOL;
+        }
+
     }
 
     public function navigate()
